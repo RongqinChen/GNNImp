@@ -375,13 +375,13 @@ for run_idx in range(n_runs):
         f1_list.append(f1)
 
     min_epoch, max_epoch = min(best_epoch_list), max(best_epoch_list)
-    mean_epoch, std_epoch = np.mean(best_epoch_list), np.std(best_epoch_list)
-    mean_val_auroc, std_val_auroc = np.mean(best_val_auroc_list), np.std(best_val_auroc_list)
-    mean_val_auprc, std_val_auprc = np.mean(best_val_auprc_list), np.std(best_val_auprc_list)
-    mean_loss, std_loss = np.mean(loss_list), np.std(loss_list)
-    mean_accuracy, std_accuracy = np.mean(accuracy_list), np.std(accuracy_list)
-    mean_auroc, std_auroc = np.mean(auroc_list), np.std(auroc_list)
-    mean_auprc, std_auprc = np.mean(auprc_list), np.std(auprc_list)
+    mean_epoch, std_epoch = np.mean(best_epoch_list) * 100, np.std(best_epoch_list) * 100
+    mean_val_auroc, std_val_auroc = np.mean(best_val_auroc_list) * 100, np.std(best_val_auroc_list) * 100
+    mean_val_auprc, std_val_auprc = np.mean(best_val_auprc_list) * 100, np.std(best_val_auprc_list) * 100
+    mean_loss, std_loss = np.mean(loss_list) * 100, np.std(loss_list) * 100
+    mean_accuracy, std_accuracy = np.mean(accuracy_list) * 100, np.std(accuracy_list) * 100
+    mean_auroc, std_auroc = np.mean(auroc_list) * 100, np.std(auroc_list) * 100
+    mean_auprc, std_auprc = np.mean(auprc_list) * 100, np.std(auprc_list) * 100
 
     logger.info(f'===================== Summary (Run Id: {run_idx}) =====================')
     logger.info(f'Epoch           = {min_epoch}, {max_epoch}, {mean_epoch:.2f}  +/- {std_epoch:.2f}')
@@ -393,9 +393,9 @@ for run_idx in range(n_runs):
     logger.info(f'Test AUPRC      = {mean_auprc:.2f}  +/- {std_auprc:.2f}')
 
     if dataset == 'PAM':
-        mean_precision, std_precision = np.mean(precision_list), np.std(precision_list)
-        mean_recall, std_recall = np.mean(recall_list), np.std(recall_list)
-        mean_f1, std_f1 = np.mean(f1_list), np.std(f1_list)
+        mean_precision, std_precision = np.mean(precision_list) * 100, np.std(precision_list) * 100
+        mean_recall, std_recall = np.mean(recall_list) * 100, np.std(recall_list) * 100
+        mean_f1, std_f1 = np.mean(f1_list) * 100, np.std(f1_list) * 100
         logger.info(f'Test Precision  = {mean_precision:.2f}  +/- {std_precision:.2f}')
         logger.info(f'Test Recall     = {mean_recall:.2f}  +/- {std_recall:.2f}')
         logger.info(f'Test F1         = {mean_f1:.2f}  +/- {std_f1:.2f}')
