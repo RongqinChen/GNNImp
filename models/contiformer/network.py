@@ -6,7 +6,6 @@ import math
 import torch
 from torch import nn
 import torch.nn.functional as F
-from .tsrnn import NETWORKS
 from .module.linear import ODELinear, InterpLinear
 from .module.positional_encoding import PositionalEncoding
 
@@ -240,13 +239,12 @@ class EncoderLayer(nn.Module):
         return enc_output, enc_slf_attn
 
 
-@NETWORKS.register_module("contiformer")
 class ContiFormer(nn.Module):
     """A sequence to sequence model with attention mechanism."""
 
     def __init__(
             self,
-            input_size: Optional[int] = None,
+            temp_dim, static_dim, max_len,
             d_model: Optional[int] = 256,
             d_inner: Optional[int] = 1024,
             n_layers: Optional[int] = 4,
@@ -268,10 +266,11 @@ class ContiFormer(nn.Module):
             itol_ode: Optional[float] = 1e-2,
             add_pe: Optional[bool] = False,
             normalize_before: Optional[bool] = False,
-            max_length: int = 100,
     ):
         super().__init__()
-
+        self.temp_dim = temp_dim
+        self.static_dim = static_dim
+        
         args_ode = {
             "actfn": actfn_ode,
             "layer_type": layer_type_ode,
@@ -287,6 +286,11 @@ class ContiFormer(nn.Module):
             "itol": itol_ode,
         }
         args_ode = AttrDict(args_ode)
+        self.temp_encoder = nn.Linear(temp_dim, d_model)
+        # self.pos_encoder = PositionalEncoding(d_model, max_len=max_len)
+        self.static = static_dim > 0
+        if self.static:
+            self.emb = nn.Linear(static_dim, d_model)
 
         self.encoder = Encoder(
             d_model=d_model,
@@ -297,30 +301,33 @@ class ContiFormer(nn.Module):
             d_v=d_v,
             dropout=dropout,
             args=args_ode,
-            add_pe=add_pe,
+            add_pe=False,
             normalize_before=normalize_before,
         )
-
         self.d_model = d_model
-
-        if input_size is not None:   # None for hidden state inputs
-            self.linear = nn.Linear(input_size, d_model)
-        else:
-            self.linear = None
-
-        self.max_length = max_length
         self.__output_size = d_model
         self.__hidden_size = d_model
 
-    def forward(self, x, t=None, mask=None):
-        if t is None:   # default to regular time series
-            t = torch.linspace(0, 1, x.shape[1]).to(x.device)
-            t = t.unsqueeze(0).repeat(x.shape[0], 1)
+    def forward(self, Xtemp, Xtimes, Xstatic, lengths):
+        maxlen, _, _ = Xtemp.shape
+        mask = Xtemp[:, :, int(Xtemp.shape[2] / 2):]
+        Xtemp = Xtemp[:, :, :int(Xtemp.shape[2] / 2)]
+        Xtemp = self.temp_encoder(Xtemp)
+        # pe = self.pos_encoder(Xtimes)
 
-        if self.linear is not None:
-            x = self.linear(x)
+        if Xstatic is not None:
+            emb = self.emb(Xstatic)
+            emb.unsqueeze(0)
+            x = Xtemp + emb
+        else:
+            x = Xtemp
 
-        enc_output = self.encoder(x, t, mask)
+        # mask = torch.arange(maxlen)[None, :] >= (lengths.cpu()[:, None])
+        # mask = mask.squeeze(1).to(Xtemp.device)
+        x = x.permute((1, 0, 2))
+        Xtimes = Xtimes.permute((1, 0, 2))
+        Xtimes = Xtimes.squeeze(-1)
+        enc_output = self.encoder(x, Xtimes, mask)
         return enc_output, enc_output[:, -1, :]
 
     @property
